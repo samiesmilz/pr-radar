@@ -265,6 +265,10 @@ final class AppState: ObservableObject {
         didSet { Prefs.mascot = mascot }
     }
 
+    @Published var appearance: Appearance = Prefs.appearance {
+        didSet { Prefs.appearance = appearance }
+    }
+
     /// A transient reaction that outranks the derived mood while it lasts:
     /// being hovered, being dragged, or a review arriving.
     @Published var reaction: Reaction?

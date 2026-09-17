@@ -44,9 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
-        if let appearance = Log.forcedAppearance {
-            NSApp.appearance = appearance
-        }
+        applyAppearance()
         notifier.prepare()
 
         panel = PanelController(state: state)
@@ -427,6 +425,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                      action: #selector(menuOpenGitHub), keyEquivalent: "").target = self
 
         menu.addItem(mascotMenuItem())
+        menu.addItem(themeMenuItem())
 
         let loginItem = NSMenuItem(title: "Start at login",
                                    action: #selector(menuToggleLoginItem), keyEquivalent: "")
@@ -470,6 +469,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         parent.submenu = submenu
         return parent
+    }
+
+    /// Pinning the colour scheme for this window alone. The badge floats over
+    /// whatever is behind it, so the system's answer is not always the right one
+    /// here.
+    private func themeMenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "Theme", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for choice in Appearance.allCases {
+            let item = NSMenuItem(title: choice.title,
+                                  action: #selector(menuPickAppearance(_:)),
+                                  keyEquivalent: "")
+            item.target = self
+            item.representedObject = choice.rawValue
+            item.state = state.appearance == choice ? .on : .off
+            submenu.addItem(item)
+        }
+        if Log.forcedAppearance != nil {
+            // Otherwise the menu would show a tick next to a scheme that is not
+            // the one on screen, and nothing would say why.
+            submenu.addItem(.separator())
+            let note = NSMenuItem(title: "Overridden by PRRADAR_APPEARANCE",
+                                  action: nil, keyEquivalent: "")
+            note.isEnabled = false
+            submenu.addItem(note)
+        }
+        parent.submenu = submenu
+        return parent
+    }
+
+    @objc private func menuPickAppearance(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let choice = Appearance(rawValue: raw)
+        else { return }
+        state.appearance = choice
+        applyAppearance()
+    }
+
+    /// The environment override wins, because it exists to inspect a scheme
+    /// without disturbing what is stored — a debug switch that a saved
+    /// preference could silently beat would be no use for that.
+    private func applyAppearance() {
+        if let forced = Log.forcedAppearance {
+            NSApp.appearance = forced
+            return
+        }
+        switch state.appearance {
+        case .system: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     @objc private func menuPickMascot(_ sender: NSMenuItem) {

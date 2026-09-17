@@ -20,6 +20,7 @@ public enum Prefs {
         static let updateRepo = "update.repo"
         static let notifiedUpdate = "update.notifiedVersion"
         static let mascot = "mascot.choice"
+        static let appearance = "appearance.choice"
     }
 
     public static var badgeOrigin: CGPoint? {
@@ -116,6 +117,18 @@ public enum Prefs {
     }
 
     private static let mascotOffValue = "off"
+
+    /// Which colour scheme to draw in. Defaults to following the system, which
+    /// is what the app did before there was anything to choose. An unrecognised
+    /// stored value falls back to that too, rather than to a pinned scheme:
+    /// following the system is never surprising, and a scheme nobody picked is.
+    public static var appearance: Appearance {
+        get {
+            defaults.string(forKey: Key.appearance)
+                .flatMap(Appearance.init(rawValue:)) ?? .system
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.appearance) }
+    }
 
     public static var selectedTab: DrawerTab {
         get {
