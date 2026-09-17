@@ -69,23 +69,55 @@ for host, entries in hosts.items():
 fi
 
 # --- 2. the bundle identifier ----------------------------------------------
-# Derived, not asked for: nobody should have to invent a reverse-DNS string,
-# and the login it is built from is already sitting in gh.
+# Asks for a *name* and builds the identifier from it.
+#
+# A reverse-DNS string is a format, not a decision, and a tool that can
+# construct one should not make a person type one. Asking for the identifier
+# directly got exactly what asking invites: a bare login, accepted because it
+# broke no rule, which is a legal-but-unconventional identifier — and, because
+# the identifier is also the preferences domain, one that silently stranded
+# every setting stored under the previous one.
+#
+# A name cannot be malformed. Anything unusable in one is removed rather than
+# rejected, because there is nothing here a person could get wrong that the
+# script cannot simply fix.
 say "choosing a bundle identifier"
-DEFAULT_ID="com.example.prradar"
+
+slug() {  # a name -> the middle segment of an identifier
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-'
+}
+
+DEFAULT_NAME="example"
 if [ -n "$GH" ]; then
   LOGIN="$(gh api user --jq .login 2>/dev/null || true)"
-  # Lowercased, and anything outside [a-z0-9-] dropped: a login may contain
-  # characters a bundle identifier may not.
-  SLUG="$(printf '%s' "${LOGIN:-}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
-  [ -n "$SLUG" ] && DEFAULT_ID="com.$SLUG.prradar"
+  [ -n "$(slug "${LOGIN:-}")" ] && DEFAULT_NAME="$LOGIN"
 fi
 
-BUNDLE_ID="$(ask "bundle identifier" "$DEFAULT_ID")"
-case "$BUNDLE_ID" in
-  *[!A-Za-z0-9.-]*|.*|*.|*..*|"") die "not a usable bundle identifier: '$BUNDLE_ID'" ;;
+printf '    Used for the app identifier, your preferences, and the login item.\n'
+NAME="$(ask "your GitHub login or a short name" "$DEFAULT_NAME")"
+
+case "$NAME" in
+  *.*)
+    # Already reverse-DNS. Someone who typed com.acme.prradar meant it, so it
+    # is kept — cleaned of anything illegal, never replaced.
+    BUNDLE_ID="$(printf '%s' "$NAME" | tr -cd 'A-Za-z0-9.-' \
+                 | sed 's/^\.*//; s/\.*$//; s/\.\{2,\}/./g')"
+    ;;
+  *)
+    BUNDLE_ID="com.$(slug "$NAME").prradar"
+    ;;
 esac
-printf '    using %s\n' "$BUNDLE_ID"
+
+# Reachable when a name was all punctuation, leaving nothing to build from.
+# Falling back beats failing: nothing here is worth stopping an install over,
+# and the identifier is printed below either way.
+case "$BUNDLE_ID" in
+  ""|com..prradar) BUNDLE_ID="com.example.prradar" ;;
+  *.*)             : ;;
+  *)               BUNDLE_ID="com.example.prradar" ;;
+esac
+
+printf '    identifier: %s\n' "$BUNDLE_ID"
 
 # --- 3. a login item left by a previous identifier -------------------------
 # The failure this prevents is confusing out of proportion to how rare it is:
