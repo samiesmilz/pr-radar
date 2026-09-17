@@ -34,11 +34,18 @@ beyond `gh` itself.
 ```sh
 git clone <your-fork-url> pr-radar
 cd pr-radar
-make test          # 180 tests, ~17s. If these pass, your toolchain is fine.
+make setup
 ```
 
-Running the tests first is the fastest way to find out whether Swift and the
-SDK are set up, before any of the app-bundle machinery gets involved.
+`make setup` is the whole of it. It checks Swift and `gh`, names any account
+whose token is missing a scope this app needs, derives a bundle identifier from
+your GitHub login, asks for your review leads, runs the tests and installs.
+
+Everything it does can be done by hand, and the rest of this file explains how.
+Two of its steps are worth knowing about even if you never run it: a token
+missing `read:org` shows fewer reviews rather than failing, and changing your
+bundle identifier leaves the previous login item behind. Both fail quietly and
+later, which is why `make setup` checks them up front.
 
 ## 2. Authenticate GitHub
 
