@@ -45,23 +45,30 @@ if [ -z "$GH" ]; then
   warn "Continuing, but nothing will load until one of the two is in place."
 else
   if gh auth status >/dev/null 2>&1; then
-    # Named per account, because a machine can be signed into several and this
-    # app now reads all of them.
+    # Only the active account is checked, because that is the one the app reads:
+    # `gh auth token` answers for it and no other. Warning about the scopes of an
+    # account PR Radar will never ask about would be noise dressed as a problem.
     gh auth status --json hosts 2>/dev/null \
       | /usr/bin/python3 -c '
 import json,sys
 try: hosts = json.load(sys.stdin).get("hosts", {})
 except Exception: sys.exit(0)
+others = 0
 for host, entries in hosts.items():
     for e in entries:
+        if not e.get("active"):
+            others += 1
+            continue
         login = e.get("login", "?")
         scopes = [s.strip() for s in (e.get("scopes") or "").split(",") if s.strip()]
-        mark = " (active)" if e.get("active") else ""
-        print("    %s@%s%s" % (login, host, mark))
+        print("    %s@%s" % (login, host))
         if scopes and "read:org" not in scopes:
-            print("    !! %s has no read:org - reviews requested of a team will not appear" % login)
+            print("    !! no read:org - reviews requested of a team will not appear")
         if scopes and "repo" not in scopes:
-            print("    !! %s has no repo - private repositories will not appear" % login)
+            print("    !! no repo - private repositories will not appear")
+if others:
+    print("    (%d other account%s signed in; PR Radar reads the active one)"
+          % (others, "" if others == 1 else "s"))
 ' || true
   else
     warn "gh is installed but not logged in. Run: gh auth login"
