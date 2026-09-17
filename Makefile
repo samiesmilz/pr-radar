@@ -1,4 +1,4 @@
-.PHONY: build test run print bundle install uninstall clean release
+.PHONY: build test run print bundle install uninstall clean release setup
 
 # The identifier macOS keys notification permission, saved preferences and the
 # login item off. Override it to install under your own:
@@ -9,6 +9,11 @@
 # writes the value into Info.plist, and the targets below read it back out of
 # the bundle rather than keeping a second copy that could disagree.
 export BUNDLE_ID
+
+# First run: checks what is missing, derives an identifier from your gh login,
+# asks only for what cannot be inferred, then tests and installs.
+setup:
+	./Scripts/setup.sh
 
 build:
 	swift build
